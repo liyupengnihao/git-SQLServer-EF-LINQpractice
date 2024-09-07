@@ -1,16 +1,41 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using 多语言支持04;
+using 连表查询语句.EF6;
+
 
 namespace 连表查询语句
 {
+  //    找表且建表  
+  //select tt.*from
+  //(select*,
+  //ROW_NUMBER() over(partition by UsersName order by RecordTime desc)AS RowNum-- 按UsersName在分组，按RecordTime来降序排列，一个新列命名为RowNum
+  //from UserScoresT1) as tt-- 得到一个新表
+  //where tt.RowNum=1;-- 找RowNum为1的
+
     internal class Program
     {
         static void Main(string[] args)
         {
+            #region 简介ToList
+            //MyDBContext myDb = new MyDBContext();//   创建连接并打开
+            //                                     //List<UserTModelForEF> listUsers=myDb.UserT.ToList();//  myDb.UserT得到一个sql语句，用ToList来把sql语句提交给数据库
+            //                                     ////  myDb.UserT为一个查询对象
+            //                                     ////myDb.Dispose();//   释放连接
+
+            //var lstUsers = myDb.UserT1.Where(e => e.UsersName=="111");//   此为一个sql语句，用.ToList等来提交给数据库
+            //string sql = lstUsers.ToString();//转换为string
+            #endregion
+
+            MyDBContext myDb = new MyDBContext();
+            List<UserTModelForEF> list = myDb.UserT1.ToList();
+            myDb.Dispose();//释放连接
+
+
             //  语言判断
             Console.WriteLine("请选择展示性别的语言");
             Console.WriteLine("1：中文 2：English 3：繁体中文,输入错误数字默认为中文");

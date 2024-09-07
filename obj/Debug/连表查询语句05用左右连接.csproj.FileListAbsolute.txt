@@ -5,3 +5,8 @@ D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表
 D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\obj\Debug\连表查询语句05用左右连接.csproj.CoreCompileInputs.cache
 D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\obj\Debug\连表查询语句.exe
 D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\obj\Debug\连表查询语句.pdb
+D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\bin\Debug\EntityFramework.dll
+D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\bin\Debug\EntityFramework.SqlServer.dll
+D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\bin\Debug\EntityFramework.xml
+D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\bin\Debug\EntityFramework.SqlServer.xml
+D:\C#语言VS学前练习\C#语言学前练习第十五天（数据库）\连表查询语句\obj\Debug\连表查询语句05.82AB9C1B.Up2Date
