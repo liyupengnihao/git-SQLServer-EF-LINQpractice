@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Data;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Remoting.Messaging;
 using System.Text;
 using System.Threading.Tasks;
+using 连表查询语句.EF6;
 
 namespace 多语言支持04
 {
@@ -98,7 +100,7 @@ namespace 多语言支持04
         /// <summary>
         /// 填入性别(我)
         /// </summary>
-        public static void UPDataGender(UserT1Model userTM)
+        public static int UPDataGender(UserTModelForEF userTM)//改为EF的类了原本为UserT1Model类
         {
             while (true)
             {
@@ -106,19 +108,43 @@ namespace 多语言支持04
                 string inputeGender = Console.ReadLine();
                 if (!(inputeGender=="1"||inputeGender=="2"||inputeGender=="3"))
                     continue;// 把一二传进去      
-                //  再根据性别来更新数据库
-                string updataGender = $"update UserT1 set Gender='{inputeGender}'where UsersName='{userTM.UsersName}'";//   更新单一属性下对应主键的数据数据
-                int count = SQLHelper.EditData(updataGender);
-                if (count>0)
+                int count;
+                #region 用EF
+                using (MyDBContext myDB = new MyDBContext())
                 {
-                    Console.WriteLine($"修改{userTM.UsersName}的性别成功");
-                    break;
+                    //查询数据转换为C#的类型后，想修改并修改数据库，只能在对应上下文中（此为using内）
+                    //所以userTM..Gender= inputeGender;
+                    //myDB.SaveChanges();不会修改数据库的内容
+
+                    UserTModelForEF model = myDB.UserT1.FirstOrDefault(e=>e.UsersName==userTM.UsersName);
+                    model.Gender= inputeGender;
+                    count=myDB.SaveChanges();//用于改变数据库的内容，返回受影响行数（int）
+
+                    ////诺还是要用userTM
+                    //myDB.UserT1.Attach(userTM);//把userTM加到上下文类中
+                    //myDB.Entry(userTM).State=System.Data.Entity.EntityState.Modified;//可修改状态
+                    //userTM.Gender= inputeGender;
+                    //myDB.SaveChanges();
                 }
-                else
-                {
-                    Console.WriteLine("修改失败,请重新输入");
-                    continue;
-                }
+                return count;
+
+                #endregion
+
+                #region 用sql语言
+                ////  再根据性别来更新数据库
+                //string updataGender = $"update UserT1 set Gender='{inputeGender}'where UsersName='{userTM.UsersName}'";//   更新单一属性下对应主键的数据数据
+                //int count = SQLHelper.EditData(updataGender);
+                //if (count>0)
+                //{
+                //    Console.WriteLine($"修改{userTM.UsersName}的性别成功");
+                //    break;
+                //}
+                //else
+                //{
+                //    Console.WriteLine("修改失败,请重新输入");
+                //    continue;
+                //}
+                #endregion
             }
         }
     }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -10,38 +11,60 @@ using 连表查询语句.EF6;
 
 namespace 连表查询语句
 {
-  //    找表且建表  
-  //select tt.*from
-  //(select*,
-  //ROW_NUMBER() over(partition by UsersName order by RecordTime desc)AS RowNum-- 按UsersName在分组，按RecordTime来降序排列，一个新列命名为RowNum
-  //from UserScoresT1) as tt-- 得到一个新表
-  //where tt.RowNum=1;-- 找RowNum为1的
+    //    找表且建表  
+    //select tt.*from
+    //(select*,
+    //ROW_NUMBER() over(partition by UsersName order by RecordTime desc)AS RowNum-- 按UsersName在分组，按RecordTime来降序排列，一个新列命名为RowNum
+    //from UserScoresT1) as tt-- 得到一个新表
+    //where tt.RowNum=1;-- 找RowNum为1的
 
     internal class Program
     {
         static void Main(string[] args)
         {
-            #region 简介ToList
+            #region 简介ToList，已注释
             //MyDBContext myDb = new MyDBContext();//   创建连接并打开
             //                                     //List<UserTModelForEF> listUsers=myDb.UserT.ToList();//  myDb.UserT得到一个sql语句，用ToList来把sql语句提交给数据库
             //                                     ////  myDb.UserT为一个查询对象
             //                                     ////myDb.Dispose();//   释放连接
 
+            //LINQ查询
             //var lstUsers = myDb.UserT1.Where(e => e.UsersName=="111");//   此为一个sql语句，用.ToList等来提交给数据库
             //string sql = lstUsers.ToString();//转换为string
+
+            //////using (MyDBContext myDb = new MyDBContext())
+            //////{
+            //////    List<UserTModelForEF> list = myDb.UserT1.ToList();
+            //////}
+
+            ////////myDb.Dispose();//释放连接,using也释放
+
             #endregion
+            #region 更直观显示与接近sql语言的方式，已注释
+            //using (MyDBContext myDB = new MyDBContext())
+            //{
+            //    DbSet<UserTModelForEF> listQuery = myDB.UserT1;//查询对象
+            //    List<UserTModelForEF> list = listQuery.ToList();
 
-            MyDBContext myDb = new MyDBContext();
-            List<UserTModelForEF> list = myDb.UserT1.ToList();
-            myDb.Dispose();//释放连接
+            //    //接近sql的方法
+            //    var query = from usertOne in myDB.UserT1 select usertOne;//一个查询对象，与前面的相同,usertOne为别名
+            //    List<UserTModelForEF>  lst=query.ToList();
 
+            //    //特定属性
+            //    var queryOne = from usertTwo in myDB.UserT1 select usertTwo.UsersName;
+            //    List<string> ls= queryOne.ToList();
 
+            //    //映射到新表中
+            //    var queryTwo=from usertThree in myDB.UserT1 select new UserTModelForEFNew { UsersName = usertThree.UsersName,Gender=usertThree.Gender };
+            //    List<UserTModelForEFNew> l= queryTwo.ToList();
+            //}
+            #endregion
             //  语言判断
             Console.WriteLine("请选择展示性别的语言");
             Console.WriteLine("1：中文 2：English 3：繁体中文,输入错误数字默认为中文");
             string number = Console.ReadLine();
             //  用语音文档
-            #region 语言文档
+            #region 语言文档（部分）
             if (number=="2")// 此处的1 2 是分辨语言的，在把对应语言的内容输入进去
             {
                 InfoHelper.Gender1="Male";
@@ -72,7 +95,8 @@ namespace 连表查询语句
 
 
             //  DataTable table = null;//   老版登录界面用
-            UserT1Model userTM = null;
+            //UserT1Model userTM = null;//  sql语言时
+            UserTModelForEF userTM = new UserTModelForEF();
             //  界面部分
             Console.WriteLine(InfoHelper.Info1);//  下面都可以重复如此
             while (true)
@@ -84,13 +108,19 @@ namespace 连表查询语句
 
 
 
-                userTM=UserT1Operation.Login(inputeName, inputePwd);
+                //userTM=UserT1Operation.Login(inputeName, inputePwd);
+                using (MyDBContext myDB = new MyDBContext())
+                {
+                    //FirstOrDefault用于返回序列中满足指定的条件或默认值，如果找到这样的元素的第一个元素
+                    userTM=myDB.UserT1.FirstOrDefault(e => e.UsersName==inputeName&&e.Password==inputePwd);
+                }
+
                 if (userTM!=null)
                 {
                     break;
                 }
 
-                #region 老版登录界面
+                #region 老版登录界面，以注释
                 //  为看的舒心用方法
                 //sql = $"select*from UserT1 where UsersName='{inputeName}'and Password='{inputePwd}'";
                 //table = SelectData(sql);
@@ -134,8 +164,9 @@ namespace 连表查询语句
             {
                 Console.WriteLine($"尊敬的{userTM.NickName}你好，你的消息性别还不完整，请输入性别");
 
-                UserT1Operation.UPDataGender(userTM);
-                #region 不用方法
+                int count = UserT1Operation.UPDataGender(userTM);
+                Console.WriteLine($"影响了{count}行");
+                #region 不用方法，已注释
                 //while (true)
                 //{
                 //    Console.WriteLine("请输入1：男 2：女 3:未知性别");
@@ -176,27 +207,167 @@ namespace 连表查询语句
             }
 
 
-
-
             #region 展示数据库中所有的数据
-            #region 连表查询
-            List<UsersT1UsersScoresT1Model> twoTable = UsersT1UsersScoresT1Operation.GetUnionTwoTable();//  还未显示结果
-            Console.WriteLine("用户名，昵称，性别，语文成绩，英语成绩，数学成绩，时间");
-            for (int i = 0; i<twoTable.Count; i++)
+            #region EF6
+            //1查询UserT1,再查询UserScoreT1
+            //1)展示所有UserScoresT
+            //2)展示最新UserScoresT
+            using (MyDBContext myDB = new MyDBContext())
             {
+                Console.WriteLine("用户名，昵称，性别，语文成绩，英语成绩，数学成绩，时间");
+                //查询所有UserT数据
+                List<UserTModelForEF> lastAllUsers = myDB.UserT1.ToList();
+                #region 所有数据
+                for (int i = 0; i<lastAllUsers.Count; i++)
+                {
+                    if (lastAllUsers[i].Gender=="1")
+                        lastAllUsers[i].Gender=InfoHelper.Gender1;
+                    else if (lastAllUsers[i].Gender=="2")
+                        lastAllUsers[i].Gender=InfoHelper.Gender2;
+                    else if (lastAllUsers[i].Gender=="3")
+                        lastAllUsers[i].Gender=InfoHelper.Gender3;
+                    //查询所有UserScoreT1里的数据
 
-                if (twoTable[i].Gender=="1")
-                    twoTable[i].Gender=InfoHelper.Gender1;
-                else if (twoTable[i].Gender=="2")
-                    twoTable[i].Gender=InfoHelper.Gender2;
-                else if (twoTable[i].Gender=="3")
-                    twoTable[i].Gender=InfoHelper.Gender3;
-                Console.WriteLine($"{twoTable[i].UsersName+"\t"}{twoTable[i].NickName+"\t"}{twoTable[i].Gender+"\t"}{twoTable[i].Chinese+"\t"}{twoTable[i].English+"\t"}{twoTable[i].Math+"\t"}{twoTable[i].RecordTime+"\t"}");
+                    //接收当前循环到的usersname(直接转不能用)
+                    string currentUserName = lastAllUsers[i].UsersName;
+                    List<UserScoresTModelForEF> listAllUserScores = myDB.UserScoresT1.Where(e => e.UsersName==currentUserName).ToList();
+                    //Whrer每个符合的数据
 
+                    foreach (UserScoresTModelForEF item in listAllUserScores)
+                    {
+                        Console.WriteLine($"{lastAllUsers[i].UsersName+"\t"}{lastAllUsers[i].NickName+"\t"}{lastAllUsers[i].Gender+"\t"}{item.Chinese+"\t"}{item.English+"\t"}{item.Math+"\t"}{item.RecordTime+"\t"}");
+                    }
+                }
+                #endregion
+                #region 最新数据
+                Console.WriteLine("最新数据");
+                for (int i = 0; i<lastAllUsers.Count; i++)
+                {
+                    if (lastAllUsers[i].Gender=="1")
+                        lastAllUsers[i].Gender=InfoHelper.Gender1;
+                    else if (lastAllUsers[i].Gender=="2")
+                        lastAllUsers[i].Gender=InfoHelper.Gender2;
+                    else if (lastAllUsers[i].Gender=="3")
+                        lastAllUsers[i].Gender=InfoHelper.Gender3;
+                    string currentUserName = lastAllUsers[i].UsersName;
+
+
+                    List<UserScoresTModelForEF> currentTime = myDB.UserScoresT1.Where(e => e.UsersName==currentUserName).OrderByDescending(e => e.RecordTime).ToList();
+                    //OrderByDescending根据键降序排序,First用来提交给数据库并取第一个数值，ToList用来提交给数据库,返回序列中的第一个元素；FirstOrDefault如果序列中不包含任何元素，则返回默认值
+                    if (currentTime.Count==0)
+                    {
+                        Console.WriteLine($"{currentUserName} 无成绩数据");
+                    }
+                    else
+                    {
+
+                        Console.WriteLine($"{lastAllUsers[i].UsersName+"\t"}{lastAllUsers[i].NickName+"\t"}{lastAllUsers[i].Gender+"\t"}{currentTime[0].Chinese+"\t"}{currentTime[0].English+"\t"}{currentTime[0].Math+"\t"}{currentTime[0].RecordTime+"\t"}");
+                    }
+
+                }
+                #endregion
             }
             #endregion
 
-            #region 老一表查询方法，注释
+            //2、连表查询
+            //1)展示所有的UserScoresT
+            //2）展示最新的UserScoresT
+            using (MyDBContext myDB = new MyDBContext())
+            {
+                var query = from user in myDB.UserT1//查询表UserT1别名user
+                            join userScorest in myDB.UserScoresT1//左连接
+                            on user.UsersName equals userScorest.UsersName//连接条件
+                            //内连接
+                            select new UserTAndUserScoresTModelForEF//得到的数据赋值给新表
+                            {
+                                UsersName=user.UsersName,
+                                NickName=user.NickName,
+                                Gender=user.Gender,
+                                Password=user.Password,
+                                Chinese=userScorest.Chinese,
+                                English=userScorest.English,
+                                Math=userScorest.Math,
+                                RecordTime=userScorest.RecordTime
+                            };//得到sql语句
+                List<UserTAndUserScoresTModelForEF> list = query.ToList();
+                foreach (var item in list)
+                {
+                    Console.WriteLine($"{item.UsersName+"\t"}{item.NickName+"\t"}{item.Gender+"\t"}{item.Chinese+"\t"}{item.English+"\t"}{item.Math+"\t"}{item.RecordTime+"\t"}");
+
+                }
+            }
+
+            Console.WriteLine("模拟左连接");
+            using (MyDBContext myDB = new MyDBContext())
+            {
+                var query = from user in myDB.UserT1//查询表UserT1别名user
+                            join userScorest in myDB.UserScoresT1//左连接
+                            on user.UsersName equals userScorest.UsersName
+                            into utus//into把连接结果放入临时结果中
+                            from userScorest in utus.DefaultIfEmpty()
+                                //（模拟）左连接
+                                //使用 from userScorest in utus.DefaultIfEmpty()，它遍历了 utus 中的每个分组，并且对于每个分组，即使没有匹配的 userScorest（即分组为空），也会通过 DefaultIfEmpty() 方法返回一个空的 userScorest（实际上是 userScorest 类型的默认值，对于引用类型是 null）。这种方式实际上模拟了左外连接的行为
+                            select new UserTAndUserScoresTModelForEF//得到的数据赋值给新表
+                            {
+                                UsersName=user.UsersName,
+                                NickName=user.NickName,
+                                Gender=user.Gender,
+                                Password=user.Password,
+                                Chinese=userScorest.Chinese,
+                                English=userScorest.English,
+                                Math=userScorest.Math,
+                                RecordTime=userScorest.RecordTime
+                            };//得到sql语句
+                List<UserTAndUserScoresTModelForEF> list = query.ToList();
+                foreach (var item in list)
+                {
+                    Console.WriteLine($"{item.UsersName+"\t"}{item.NickName+"\t"}{item.Gender+"\t"}{item.Chinese+"\t"}{item.English+"\t"}{item.Math+"\t"}{item.RecordTime+"\t"}");
+
+                }
+            }
+
+            Console.WriteLine("最新成绩");
+            using (MyDBContext myDB = new MyDBContext())
+            {
+                //LINQ查询语法
+                var query = from user in myDB.UserT1
+                            join userScore in myDB.UserScoresT1
+                            on user.UsersName equals userScore.UsersName
+                            into utus
+                            from userScorest in utus.OrderByDescending(e => e.RecordTime).Take(1).DefaultIfEmpty()//Take(1)
+                            select new UserTAndUserScoresTModelForEF
+                            {
+                                UsersName=user.UsersName,
+                                NickName=user.NickName,
+                                Gender=user.Gender,
+                                Password=user.Password,
+                                Chinese=userScorest.Chinese,
+                                English=userScorest.English,
+                                Math=userScorest.Math,
+                                RecordTime=userScorest.RecordTime
+                            };
+                List<UserTAndUserScoresTModelForEF> list = query.ToList();
+                          
+            }
+
+            #region 连表查询，sql语言,已注释
+            //List<UsersT1UsersScoresT1Model> twoTable = UsersT1UsersScoresT1Operation.GetUnionTwoTable();//  还未显示结果
+            //Console.WriteLine("用户名，昵称，性别，语文成绩，英语成绩，数学成绩，时间");
+            //for (int i = 0; i<twoTable.Count; i++)
+            //{
+
+            //    if (twoTable[i].Gender=="1")
+            //        twoTable[i].Gender=InfoHelper.Gender1;
+            //    else if (twoTable[i].Gender=="2")
+            //        twoTable[i].Gender=InfoHelper.Gender2;
+            //    else if (twoTable[i].Gender=="3")
+            //        twoTable[i].Gender=InfoHelper.Gender3;
+            //    Console.WriteLine($"{twoTable[i].UsersName+"\t"}{twoTable[i].NickName+"\t"}{twoTable[i].Gender+"\t"}{twoTable[i].Chinese+"\t"}{twoTable[i].English+"\t"}{twoTable[i].Math+"\t"}{twoTable[i].RecordTime+"\t"}");
+
+            //}
+            #endregion
+
+            #region 老一表查询方法，已注释
             //string sql = "select*from UserT1";
             //Console.WriteLine("用户名 昵称 性别");
             //DataTable tableTwo = SQLHelper.SelectData(sql);
@@ -227,7 +398,7 @@ namespace 连表查询语句
             //}
             #endregion
 
-            #region 查询兩表所有数据老方法
+            #region 查询兩表所有数据老方法 已注释
             ////  查询所有数据老方法
             //List<UserT1Model> usersOne = UserT1Operation.AllUsers();
 
@@ -254,7 +425,7 @@ namespace 连表查询语句
             //}
             #endregion
 
-            #region 老版遍历 不显示结果
+            #region 老版遍历 不显示结果，已注释
             //for (int i = 0; i<tableTwo.Rows.Count; i++)
             //{
             //    string genderForSQL = tableTwo.Rows[i]["Gender"].ToString();

@@ -18,6 +18,11 @@ namespace 连表查询语句.EF6
         public string Password { get; set; }
         public string NickName { get; set; }
         public string Gender { get; set; }
-}
-
+    }
+    //加table和key是让EF可以检索并执行操作
+    public class UserTModelForEFNew
+    {
+        public string UsersName { get; set; }
+        public string Gender { get; set; }
+    }
 }
